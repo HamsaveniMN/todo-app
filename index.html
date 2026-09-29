@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Todo List</title>
+    <link rel="manifest" href="manifest.json">
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: lightblue;
+            margin: 0;
+            padding: 30px 15px;
+            transition: 0.3s;
+        }
+
+        .todo-box {
+            max-width: 650px;
+            margin: auto;
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+        }
+
+        h1 {
+            text-align: center;
+            color: darkblue;
+        }
+
+        .top-buttons {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 9px 13px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 4px;
+        }
+
+        .dark-btn {
+            background: #333;
+            color: white;
+        }
+
+        .clear-btn {
+            background: crimson;
+            color: white;
+        }
+
+        .input-area {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        input {
+            padding: 11px;
+            border: 1px solid gray;
+            border-radius: 6px;
+            font-size: 15px;
+        }
+
+        #task {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .add-btn {
+            background: green;
+            color: white;
+        }
+
+        .search {
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        .filters {
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        .filter-btn {
+            background: lightgray;
+        }
+
+        ul {
+            padding: 0;
+        }
+
+        li {
+            list-style: none;
+            background: #eeeeee;
+            margin: 10px 0;
+            padding: 12px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .task-info {
+            flex: 1;
+            cursor: pointer;
+        }
+
+        .task-name {
+            font-size: 17px;
+            font-weight: bold;
+        }
+
+        .due-date {
+            font-size: 13px;
+            color: #555;
+            margin-top: 5px;
+        }
+
+        li.completed .task-name {
+            text-decoration: line-through;
+            opacity: 0.5;
+        }
+
+        li.completed .due-date {
+            opacity: 0.5;
+        }
+
+        .delete-btn {
+            background: red;
+            color: white;
+        }
+
+        .stats {
+            background: #eeeeee;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .stats p {
+            margin: 7px;
+        }
+
+        /* DARK MODE */
+
+        body.dark {
+            background: #181818;
+            color: white;
+        }
+
+        body.dark .todo-box {
+            background: #292929;
+        }
+
+        body.dark h1 {
+            color: white;
+        }
+
+        body.dark input {
+            background: #444;
+            color: white;
+            border-color: #777;
+        }
+
+        body.dark input::placeholder {
+            color: #ddd;
+        }
+
+        body.dark li,
+        body.dark .stats {
+            background: #444;
+        }
+
+        body.dark .due-date {
+            color: #ddd;
+        }
+
+        body.dark .filter-btn {
+            background: #666;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="todo-box">
+
+    <h1>📝 My Todo List</h1>
+
+    <div class="top-buttons">
+        <button class="dark-btn" onclick="darkMode()">
+            🌙 Dark Mode
+        </button>
+
+        <button class="clear-btn" onclick="clearAll()">
+            🧹 Clear All
+        </button>
+    </div>
+
+
+    <!-- ADD TASK -->
+
+    <div class="input-area">
+
+        <input
+            id="task"
+            type="text"
+            placeholder="Enter your task"
+        >
+
+        <input
+            id="dueDate"
+            type="date"
+        >
+
+        <button class="add-btn" onclick="addTask()">
+            ➕ Add
+        </button>
+
+    </div>
+
+
+    <!-- SEARCH -->
+
+    <input
+        class="search"
+        id="search"
+        type="text"
+        placeholder="🔍 Search tasks..."
+        oninput="displayTasks()"
+    >
+
+
+    <!-- FILTER -->
+
+    <div class="filters">
+
+        <button
+            class="filter-btn"
+            onclick="setFilter('all')">
+            All
+        </button>
+
+        <button
+            class="filter-btn"
+            onclick="setFilter('pending')">
+            🟢 Pending
+        </button>
+
+        <button
+            class="filter-btn"
+            onclick="setFilter('completed')">
+            ✅ Completed
+        </button>
+
+    </div>
+
+
+    <!-- TASK LIST -->
+
+    <ul id="list"></ul>
+
+
+    <!-- STATISTICS -->
+
+    <div class="stats">
+
+        <p>📊 Total Tasks: <span id="total">0</span></p>
+
+        <p>🟢 Pending: <span id="pending">0</span></p>
+
+        <p>✅ Completed: <span id="completed">0</span></p>
+
+    </div>
+
+</div>
+
+
+<script>
+
+    /* LOAD SAVED TASKS */
+
+    let tasks =
+        JSON.parse(localStorage.getItem("myTasks")) || [];
+
+    let currentFilter = "all";
+
+
+    /* SAVE TASKS */
+
+    function saveTasks() {
+
+        localStorage.setItem(
+            "myTasks",
+            JSON.stringify(tasks)
+        );
+    }
+
+
+    /* ADD TASK */
+
+    function addTask() {
+
+        let taskInput =
+            document.getElementById("task");
+
+        let dateInput =
+            document.getElementById("dueDate");
+
+        let taskText =
+            taskInput.value.trim();
+
+        let dueDate =
+            dateInput.value;
+
+
+        if (taskText === "") {
+
+            alert("Please enter a task.");
+
+            return;
+        }
+
+
+        tasks.push({
+
+            text: taskText,
+
+            dueDate: dueDate,
+
+            completed: false
+
+        });
+
+
+        saveTasks();
+
+
+        taskInput.value = "";
+
+        dateInput.value = "";
+
+
+        displayTasks();
+    }
+
+
+    /* DISPLAY TASKS */
+
+    function displayTasks() {
+
+        let list =
+            document.getElementById("list");
+
+        let searchText =
+            document.getElementById("search")
+            .value
+            .toLowerCase();
+
+
+        list.innerHTML = "";
+
+
+        tasks.forEach(function(task, index) {
+
+            /* FILTER */
+
+            if (
+                currentFilter === "pending"
+                && task.completed
+            ) {
+                return;
+            }
+
+            if (
+                currentFilter === "completed"
+                && !task.completed
+            ) {
+                return;
+            }
+
+
+            /* SEARCH */
+
+            if (
+                !task.text
+                    .toLowerCase()
+                    .includes(searchText)
+            ) {
+                return;
+            }
+
+
+            /* CREATE TASK */
+
+            let item =
+                document.createElement("li");
+
+
+            if (task.completed) {
+
+                item.classList.add("completed");
+
+            }
+
+
+            /* TASK INFORMATION */
+
+            let taskInfo =
+                document.createElement("div");
+
+            taskInfo.className =
+                "task-info";
+
+
+            let taskName =
+                document.createElement("div");
+
+            taskName.className =
+                "task-name";
+
+            taskName.textContent =
+                task.text;
+
+
+            taskInfo.appendChild(taskName);
+
+
+            /* DUE DATE */
+
+            if (task.dueDate !== "") {
+
+                let date =
+                    document.createElement("div");
+
+                date.className =
+                    "due-date";
+
+                date.textContent =
+                    "📅 Due: " + task.dueDate;
+
+                taskInfo.appendChild(date);
+
+            }
+
+
+            /* COMPLETE TASK */
+
+            taskInfo.onclick = function() {
+
+                tasks[index].completed =
+                    !tasks[index].completed;
+
+                saveTasks();
+
+                displayTasks();
+
+            };
+
+
+            /* DELETE BUTTON */
+
+            let deleteButton =
+                document.createElement("button");
+
+            deleteButton.className =
+                "delete-btn";
+
+            deleteButton.textContent =
+                "🗑️ Delete";
+
+
+            deleteButton.onclick =
+                function(event) {
+
+                    event.stopPropagation();
+
+                    tasks.splice(index, 1);
+
+                    saveTasks();
+
+                    displayTasks();
+
+                };
+
+
+            item.appendChild(taskInfo);
+
+            item.appendChild(deleteButton);
+
+            list.appendChild(item);
+
+        });
+
+
+        updateStats();
+
+    }
+
+
+    /* FILTER */
+
+    function setFilter(filter) {
+
+        currentFilter = filter;
+
+        displayTasks();
+
+    }
+
+
+    /* STATISTICS */
+
+    function updateStats() {
+
+        let total =
+            tasks.length;
+
+
+        let completed =
+            tasks.filter(
+                function(task) {
+                    return task.completed;
+                }
+            ).length;
+
+
+        let pending =
+            total - completed;
+
+
+        document.getElementById("total")
+            .textContent = total;
+
+
+        document.getElementById("pending")
+            .textContent = pending;
+
+
+        document.getElementById("completed")
+            .textContent = completed;
+
+    }
+
+
+    /* CLEAR ALL */
+
+    function clearAll() {
+
+        if (tasks.length === 0) {
+
+            return;
+
+        }
+
+
+        let answer =
+            confirm(
+                "Are you sure you want to delete all tasks?"
+            );
+
+
+        if (answer) {
+
+            tasks = [];
+
+            saveTasks();
+
+            displayTasks();
+
+        }
+
+    }
+
+
+    /* DARK MODE */
+
+    function darkMode() {
+
+        document.body.classList.toggle("dark");
+
+    }
+
+
+    /* ENTER KEY */
+
+    document.getElementById("task")
+        .addEventListener(
+            "keydown",
+            function(event) {
+
+                if (event.key === "Enter") {
+
+                    addTask();
+
+                }
+
+            }
+        );
+
+
+    /* START */
+
+    displayTasks();
+
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js");
+}
+</script>
+
+</body>
+</html>
